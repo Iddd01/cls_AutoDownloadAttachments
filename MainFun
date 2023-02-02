@@ -1,0 +1,57 @@
+Option Explicit
+
+Private WithEvents colItems As Outlook.Items
+
+Private Sub Class_Initialize()
+    Dim objInbox As Outlook.Folder
+    Set objInbox = Application.Session.GetDefaultFolder(olFolderInbox)
+    Set colItems = objInbox.Items
+End Sub
+
+Private Sub colItems_ItemAdd(ByVal Item As Object)
+    Dim objMail As Outlook.MailItem
+    Dim objAtt As Outlook.Attachment
+    Dim objFSO, objShell As Object
+    Dim strRCDatePath, strFolderPath, strSenderPath As String
+    Dim i As Long
+  
+    strFolderPath = "C:\DownloadedAttachments\" 'Thu muc luu tap tin dinh kem
+    Set objShell = CreateObject("WScript.Shell")
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    If TypeOf Item Is Outlook.MailItem Then
+        Set objMail = Item
+        With objMail
+            'Chi tai ve dinh kem neu nhan duoc thu tu nhung dia chi email nay (.SenderEmailAddress), chinh sua lai cho phu hop voi nhu cau ban than
+            If .SenderEmailAddress = "abc.gmail.com" Or .SenderEmailAddress = "cde@gmail.com" Or .SenderEmailAddress = "ijk@gmail.com" Then
+                If .Attachments.Count > 0 Then
+                    Set objFSO = CreateObject("Scripting.FileSystemObject")
+                    If Not objFSO.FolderExists(strFolderPath & Trim(Format(GetDateFromReceivedTime(.ReceivedTime), "dd-mm-yyyy"))) Then
+                        strRCDatePath = strFolderPath & Trim(Format(GetDateFromReceivedTime(.ReceivedTime), "dd-mm-yyyy"))
+                        objFSO.CreateFolder strRCDatePath
+                    Else: strRCDatePath = strFolderPath & Trim(Format(GetDateFromReceivedTime(.ReceivedTime), "dd-mm-yyyy"))
+                    End If
+                    If Not objFSO.FolderExists(strFolderPath & Trim(Format(GetDateFromReceivedTime(.ReceivedTime), "dd-mm-yyyy")) & "\" & .SenderName) Then
+                        strSenderPath = strFolderPath & Trim(Format(GetDateFromReceivedTime(.ReceivedTime), "dd-mm-yyyy")) & "\" & .SenderEmailAddress
+                        objFSO.CreateFolder strSenderPath
+                    Else: strSenderPath = strFolderPath & Trim(Format(GetDateFromReceivedTime(.ReceivedTime), "dd-mm-yyyy")) & "\" & .SenderEmailAddress
+                    End If
+                    For i = 1 To .Attachments.Count
+                        Set objAtt = .Attachments.Item(i)
+                        objAtt.SaveAsFile strSenderPath & "\" & objAtt.DisplayName
+                    Next i
+                    objShell.Run "explorer """ & strSenderPath & "", vbNormalFocus
+                End If
+            End If
+        End With
+    End If
+    Set objMail = Nothing
+    Set objFSO = Nothing
+    Set objShell = Nothing
+    Set objAtt = Nothing
+End Sub
+
+Private Function GetDateFromReceivedTime(ReceivedDateString As String) As String
+    Dim RDString As String
+    RDString = Left(ReceivedDateString, InStr(ReceivedDateString, " "))
+    GetDateFromReceivedTime = RDString
+End Function
